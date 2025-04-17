@@ -3,10 +3,7 @@
 
 ### Project description
 
-This project is realized for the CS-439 Optimization for machine learning taught at EPFL and focuses on zeroth order optimization method for adversarial machine learning.
-
-Reference paper:
-* https://dl.acm.org/doi/pdf/10.1145/3128572.3140448
+This project is realized for the CS-439 Optimization for machine learning taught at EPFL.
 
 
 ### Authors
