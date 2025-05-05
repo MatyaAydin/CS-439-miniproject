@@ -16,7 +16,9 @@ This project is realized for the CS-439 Optimization for machine learning taught
 
 ### Repo structure
 
+**Will be completed at the end**
 
+### Dependencies
 To get all necessary packages, run the following command:
 
 ```bash
