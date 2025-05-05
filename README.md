@@ -3,7 +3,7 @@
 
 ### Project description
 
-This project is realized for the CS-439 Optimization for machine learning taught at EPFL and extends the following paper: https://arxiv.org/abs/2502.03701
+This project is realized for the CS-439 Optimization for machine learning class taught at EPFL and extends the following paper: https://arxiv.org/abs/2502.03701
 
 
 ### Authors
