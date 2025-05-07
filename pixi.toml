@@ -1,0 +1,16 @@
+[project]
+authors = ["Miki Vanoušek <vanousekmikulas@gmail.com>"]
+channels = ["conda-forge"]
+name = "miniproject_opti"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+numpy = ">=2.2.5,<3"
+python = ">=3.13.3,<3.14"
+ipykernel = ">=6.29.5,<7"
+pillow = ">=11.1.0,<12"
+matplotlib = ">=3.10.1,<4"
+scikit-learn = ">=1.6.1,<2"
