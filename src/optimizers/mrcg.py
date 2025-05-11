@@ -30,10 +30,10 @@ def scaling_selection(g, H, sigma, key, constant_learning_rate=True):
         snc =jr.uniform(key, s_lpc_min, s_lpc_max)
         return -snc * g, "NC"
 
-def backtracking_LS(loss_at_params, theta, rho, x, g, p):
+def backtracking_LS(loss_at_params, key, theta, rho, x, g, p):
 
     alpha = 1.0
-    while loss_at_params(x + alpha * p) > loss_at_params(x) + alpha * rho *jnp.dot(g, p):
+    while loss_at_params(x + alpha * p, key) > loss_at_params(x, key) + alpha * rho *jnp.dot(g, p):
         alpha *= theta
 
 
@@ -41,12 +41,12 @@ def backtracking_LS(loss_at_params, theta, rho, x, g, p):
 
 # algorithm 4 forward/backward tracking line search
 
-def forward_backward_LS(loss_at_params, theta, rho, x, g, p):
+def forward_backward_LS(loss_at_params, key, theta, rho, x, g, p):
     alpha = 1.0
-    if loss_at_params(x + alpha * p) > loss_at_params(x) + alpha * rho *jnp.dot(g, p):
+    if loss_at_params(x + alpha * p, key) > loss_at_params(x, key) + alpha * rho *jnp.dot(g, p):
         backtracking_LS(loss_at_params, theta, rho, x, g, p)
     else:
-        while loss_at_params(x + alpha * p) >= loss_at_params(x) + alpha * rho *jnp.dot(g, p):
+        while loss_at_params(x + alpha * p, key) >= loss_at_params(x, key) + alpha * rho *jnp.dot(g, p):
             alpha /= theta
 
     return alpha * theta
@@ -54,7 +54,7 @@ def forward_backward_LS(loss_at_params, theta, rho, x, g, p):
 # algorithm 2: scaled gradient descent with line search
 
 
-def scaled_GD(loss_at_params, x0, sigma, rho, theta_bt, theta_fb, MAX_ITER, eps):
+def scaled_GD(loss_at_params, key, x0, sigma, rho, theta_bt, theta_fb, MAX_ITER, eps):
     """
     sigma <<< 1
     0 < theta < 1
@@ -77,10 +77,10 @@ def scaled_GD(loss_at_params, x0, sigma, rho, theta_bt, theta_fb, MAX_ITER, eps)
         flag_distribution[FLAG] += 1
 
         if FLAG == "SPC" or FLAG == "LPC":
-            alpha_k = backtracking_LS(loss_at_params, theta_bt, rho, x_k, g_k, p_k)
+            alpha_k = backtracking_LS(loss_at_params, key, theta_bt, rho, x_k, g_k, p_k)
 
         else:
-            alpha_k = forward_backward_LS(loss_at_params, theta_fb, rho, x_k, g_k, p_k)
+            alpha_k = forward_backward_LS(loss_at_params, key, theta_fb, rho, x_k, g_k, p_k)
 
         x_k += alpha_k * p_k
 
@@ -89,10 +89,10 @@ def scaled_GD(loss_at_params, x0, sigma, rho, theta_bt, theta_fb, MAX_ITER, eps)
 
 #algorithm 3 backward tracking line search
 
-def backtracking_LS(loss_at_params, theta, rho, x, g, p):
+def backtracking_LS(loss_at_params, key, theta, rho, x, g, p):
 
     alpha = 1.0
-    while loss_at_params(x + alpha * p) > loss_at_params(x) + alpha * rho *jnp.dot(g, p):
+    while loss_at_params(x + alpha * p, key) > loss_at_params(x, key) + alpha * rho *jnp.dot(g, p):
         alpha *= theta
 
 
@@ -110,15 +110,15 @@ class MRCGState:
     iteration: int = 0
 
 def mrcg_step(state: MRCGState) -> MRCGState:
-    grad = jax.grad(state.loss_at_params)(state.params)
-    hess = jax.hessian(state.loss_at_params)(state.params)
+    grad = jax.grad(state.loss_at_params)(state.params, state.key)
+    hess = jax.hessian(state.loss_at_params)(state.params, state.key)
     key, subkey = jr.split(state.key)
     p, flag = scaling_selection(grad, hess, state.sigma, subkey)
     
     if flag == "SPC" or flag == "LPC":
-        alpha = backtracking_LS(state.loss_at_params, state.theta_bt, state.rho, state.params, grad, p)
+        alpha = backtracking_LS(state.loss_at_params, state.key, state.theta_bt, state.rho, state.params, grad, p)
     else:
-        alpha = forward_backward_LS(state.loss_at_params, state.theta_fb, state.rho, state.params, grad, p)
+        alpha = forward_backward_LS(state.loss_at_params, state.key, state.theta_fb, state.rho, state.params, grad, p)
 
     new_params = state.params + alpha * p
     return MRCGState(new_params, state.loss_at_params, key, state.sigma, state.rho, state.theta_bt, state.theta_fb, state.iteration + 1)
