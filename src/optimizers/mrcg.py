@@ -1,18 +1,10 @@
 from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
+import jax.random as jr
 from collections.abc import Callable
 
-class PRNGSequence:
-    def __init__(self, seed):
-        self._key = jax.random.PRNGKey(seed)
-    
-    def next(self):
-        self._key, subkey = jax.random.split(self._key)
-        return subkey
-keys = PRNGSequence(100)
-
-def scaling_selection(g, H, sigma, constant_learning_rate=True):
+def scaling_selection(g, H, sigma, key, constant_learning_rate=True):
     
     Hg =jnp.dot(H, g)
     dot_product =jnp.dot(g, Hg)
@@ -22,20 +14,20 @@ def scaling_selection(g, H, sigma, constant_learning_rate=True):
         s_lpc_min = 1 / sigma #set to 1/sigma for constant learning rate
         s_lpc_max = 1 / sigma #set to 1/sigma for constant learning rate
     else:
-        s_lpc_min = 1 / sigma *jax.random.random(keys.next())
+        s_lpc_min = 1 / sigma *jr.random(key)
 
     s_CG =jnp.linalg.norm(g)**2 / dot_product
     s_MR = dot_product /jnp.linalg.norm(Hg)**2
     s_GM =jnp.sqrt(s_CG * s_MR)
 
     if dot_product > sigma * norm_g**2:
-        spc =jax.random.choice(keys.next(), a=jnp.array([s_CG, s_MR, s_GM]))
+        spc =jr.choice(key, a=jnp.array([s_CG, s_MR, s_GM]))
         return -spc*g, "SPC"
     elif 0 < dot_product and dot_product < sigma * norm_g**2:
-        slpc =jax.random.uniform(keys.next(), s_lpc_min, 1 / sigma)
+        slpc =jr.uniform(key, s_lpc_min, 1 / sigma)
         return -slpc * g, "LPC"
     else:
-        snc =jax.random.uniform(keys.next(), s_lpc_min, s_lpc_max)
+        snc =jr.uniform(key, s_lpc_min, s_lpc_max)
         return -snc * g, "NC"
 
 def backtracking_LS(loss_at_params, theta, rho, x, g, p):
@@ -109,7 +101,8 @@ def backtracking_LS(loss_at_params, theta, rho, x, g, p):
 @dataclass
 class MRCGState:
     params: jnp.ndarray
-    loss_at_params: Callable[[jnp.ndarray], jnp.ndarray]
+    loss_at_params: Callable[[jnp.ndarray, jr.PRNGKey], jnp.ndarray]
+    key: jr.PRNGKey
     sigma: float = 0.1
     rho: float = 0.25
     theta_bt: float = 0.5
@@ -119,7 +112,8 @@ class MRCGState:
 def mrcg_step(state: MRCGState) -> MRCGState:
     grad = jax.grad(state.loss_at_params)(state.params)
     hess = jax.hessian(state.loss_at_params)(state.params)
-    p, flag = scaling_selection(grad, hess, state.sigma)
+    key, subkey = jr.split(state.key)
+    p, flag = scaling_selection(grad, hess, state.sigma, subkey)
     
     if flag == "SPC" or flag == "LPC":
         alpha = backtracking_LS(state.loss_at_params, state.theta_bt, state.rho, state.params, grad, p)
@@ -127,4 +121,4 @@ def mrcg_step(state: MRCGState) -> MRCGState:
         alpha = forward_backward_LS(state.loss_at_params, state.theta_fb, state.rho, state.params, grad, p)
 
     new_params = state.params + alpha * p
-    return MRCGState(new_params, state.loss_at_params, state.sigma, state.rho, state.theta_bt, state.theta_fb, state.iteration + 1)
+    return MRCGState(new_params, state.loss_at_params, key, state.sigma, state.rho, state.theta_bt, state.theta_fb, state.iteration + 1)

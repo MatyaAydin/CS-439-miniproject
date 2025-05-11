@@ -5,18 +5,19 @@ from collections.abc import Callable  # Modern import
 
 import jax.random as jr
 
-@dataclass
-class GradientDescentState:
-    params: jnp.ndarray
-    loss_at_params: Callable[[jnp.ndarray], jnp.ndarray]
-    step_size: float
-    iteration: int = 0
+# @dataclass
+# class GradientDescentState:
+#     params: jnp.ndarray
+#     loss_at_params: Callable[[jnp.ndarray], jnp.ndarray]
 
-def gradient_descent_step(state: GradientDescentState) -> GradientDescentState:
-    grad = jax.grad(state.loss_at_params)(state.params)
-    new_params = state.params - state.step_size * grad
+#     step_size: float
+#     iteration: int = 0
+
+# def gradient_descent_step(state: GradientDescentState) -> GradientDescentState:
+#     grad = jax.grad(state.loss_at_params)(state.params)
+#     new_params = state.params - state.step_size * grad
     
-    return GradientDescentState(new_params, state.loss_at_params, state.step_size, state.iteration + 1)
+#     return GradientDescentState(new_params, state.loss_at_params, state.step_size, state.iteration + 1)
 
 
 @dataclass

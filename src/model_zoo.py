@@ -1,10 +1,10 @@
 import jax.numpy as jnp
 
-def rosenbrock_loss(params):
+def rosenbrock_loss(params: jnp.ndarray, key=None):
     x, y = params
     return (1 - x)**2 + 100 * (y - x**2)**2
 
-def beale_loss(params):
+def beale_loss(params: jnp.ndarray, key=None):
     x, y = params
     term1 = (1.5 - x + x * y)**2
     term2 = (2.25 - x + x * y**2)**2
