@@ -34,7 +34,7 @@ def predict(params, inputs):
 
 init_random_params, predict_tree_params = stax.serial(
     # Dense(512), Relu,
-    # Dense(3), Relu,
+    Dense(30), Relu,
     Dense(10), LogSoftmax)
 _, initial_params_tree = init_random_params(jr.PRNGKey(0), (-1, 28*28))
 flat_params, unflatten_params = ravel_pytree(initial_params_tree)

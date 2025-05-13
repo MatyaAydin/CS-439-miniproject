@@ -4,10 +4,9 @@ import jax.numpy as jnp
 import jax.random as jr
 from collections.abc import Callable
 
-def scaling_selection(g, H, sigma, key, constant_learning_rate=True):
-    
-    Hg =jnp.dot(H, g)
-    dot_product =jnp.dot(g, Hg)
+def scaling_selection(g, loss_at_params, params, sigma, key, constant_learning_rate=True):
+    Hg = jax.jvp(lambda p: jax.grad(loss_at_params)(p, key), (params,), (g,))[1]
+    dot_product = jnp.dot(g, Hg)
     norm_g =jnp.linalg.norm(g)
 
     if constant_learning_rate:
@@ -54,37 +53,37 @@ def forward_backward_LS(loss_at_params, key, theta, rho, x, g, p):
 # algorithm 2: scaled gradient descent with line search
 
 
-def scaled_GD(loss_at_params, key, x0, sigma, rho, theta_bt, theta_fb, MAX_ITER, eps):
-    """
-    sigma <<< 1
-    0 < theta < 1
-    0 < rho < 1/2
-    """
+# def scaled_GD(loss_at_params, key, x0, sigma, rho, theta_bt, theta_fb, MAX_ITER, eps):
+#     """
+#     sigma <<< 1
+#     0 < theta < 1
+#     0 < rho < 1/2
+#     """
 
-    x_k = x0
-    flag_distribution = {"SPC": 0, "LPC": 0, "NC": 0}
+#     x_k = x0
+#     flag_distribution = {"SPC": 0, "LPC": 0, "NC": 0}
 
 
-    for _ in range(MAX_ITER):
+#     for _ in range(MAX_ITER):
 
-        g_k = 2 * x_k
+#         g_k = 2 * x_k
 
-        if jnp.linalg.norm(g_k) < eps:
-            break
+#         if jnp.linalg.norm(g_k) < eps:
+#             break
         
 
-        p_k, FLAG = scaling_selection(g_k,jnp.eye(len(x_k)), sigma)
-        flag_distribution[FLAG] += 1
+#         p_k, FLAG = scaling_selection(g_k, loss_at_params, x_k, jnp.eye(len(x_k)), sigma)
+#         flag_distribution[FLAG] += 1
 
-        if FLAG == "SPC" or FLAG == "LPC":
-            alpha_k = backtracking_LS(loss_at_params, key, theta_bt, rho, x_k, g_k, p_k)
+#         if FLAG == "SPC" or FLAG == "LPC":
+#             alpha_k = backtracking_LS(loss_at_params, key, theta_bt, rho, x_k, g_k, p_k)
 
-        else:
-            alpha_k = forward_backward_LS(loss_at_params, key, theta_fb, rho, x_k, g_k, p_k)
+#         else:
+#             alpha_k = forward_backward_LS(loss_at_params, key, theta_fb, rho, x_k, g_k, p_k)
 
-        x_k += alpha_k * p_k
+#         x_k += alpha_k * p_k
 
-    return x_k, flag_distribution
+#     return x_k, flag_distribution
 
 
 #algorithm 3 backward tracking line search
@@ -97,6 +96,10 @@ def backtracking_LS(loss_at_params, key, theta, rho, x, g, p):
 
 
     return alpha
+
+def Hv_product(f, params, vec, key):
+    return 
+
 
 @dataclass
 class MRCGState:
@@ -111,9 +114,8 @@ class MRCGState:
 
 def mrcg_step(state: MRCGState) -> MRCGState:
     grad = jax.grad(state.loss_at_params)(state.params, state.key)
-    hess = jax.hessian(state.loss_at_params)(state.params, state.key)
     key, subkey = jr.split(state.key)
-    p, flag = scaling_selection(grad, hess, state.sigma, subkey)
+    p, flag = scaling_selection(grad, state.loss_at_params, state.params, state.sigma, subkey)
     
     if flag == "SPC" or flag == "LPC":
         alpha = backtracking_LS(state.loss_at_params, state.key, state.theta_bt, state.rho, state.params, grad, p)
