@@ -9,7 +9,7 @@ from jax import jit, grad, random
 from jax.example_libraries import optimizers
 from jax.example_libraries import stax
 from jax.example_libraries.stax import Dense, Relu, LogSoftmax
-import jax_examples.datasets as datasets
+import models.datasets as datasets
 from tqdm import tqdm
 
 from jax.flatten_util import ravel_pytree
@@ -34,7 +34,8 @@ def predict(params, inputs):
 
 init_random_params, predict_tree_params = stax.serial(
     # Dense(512), Relu,
-    Dense(30), Relu,
+    Dense(1024), Relu,
+    Dense(1024), Relu,
     Dense(10), LogSoftmax)
 _, initial_params_tree = init_random_params(jr.PRNGKey(0), (-1, 28*28))
 flat_params, unflatten_params = ravel_pytree(initial_params_tree)
