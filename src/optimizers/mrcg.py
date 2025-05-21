@@ -4,30 +4,68 @@ import jax.numpy as jnp
 import jax.random as jr
 from collections.abc import Callable
 
-def scaling_selection(g, loss_at_params, params, sigma, key, constant_learning_rate=True):
-    Hg = jax.jvp(lambda p: jax.grad(loss_at_params)(p, key), (params,), (g,))[1]
+def scaling_selection(g, loss_at_params, params,
+                      sigma, key, constant_learning_rate=True):
+    """Choose a scaled descent direction p = -s·g according to curvature."""
+    # Hessian–vector product  H g
+    Hg = jax.jvp(lambda p: jax.grad(loss_at_params)(p, key),
+                 (params,), (g,))[1]
     dot_product = jnp.dot(g, Hg)
-    norm_g =jnp.linalg.norm(g)
+    norm_g      = jnp.linalg.norm(g)
 
+    # ------------------------------------------------------------
+    # step-size bounds for low-positive-curvature (LPC) regime
+    # ------------------------------------------------------------
     if constant_learning_rate:
-        s_lpc_min = 1 / sigma #set to 1/sigma for constant learning rate
-        s_lpc_max = 1 / sigma #set to 1/sigma for constant learning rate
+        s_lpc_min = 1.0 / sigma
+        s_lpc_max = 1.0 / sigma
     else:
-        s_lpc_min = 1 / sigma *jr.random(key)
+        s_lpc_min = (1.0 / sigma) * jr.uniform(key, shape=())
 
-    s_CG =jnp.linalg.norm(g)**2 / dot_product
-    s_MR = dot_product /jnp.linalg.norm(Hg)**2
-    s_GM =jnp.sqrt(s_CG * s_MR)
+    # three classical step candidates
+    s_CG = norm_g**2 / dot_product
+    s_MR = dot_product / jnp.linalg.norm(Hg)**2
+    s_GM = jnp.sqrt(s_CG * s_MR)
 
-    if dot_product > sigma * norm_g**2:
-        spc =jr.choice(key, a=jnp.array([s_CG, s_MR, s_GM]))
-        return -spc*g, "SPC"
-    elif 0 < dot_product and dot_product < sigma * norm_g**2:
-        slpc =jr.uniform(key, s_lpc_min, 1 / sigma)
+    # ------------------------------------------------------------
+    # regime selection
+    # ------------------------------------------------------------
+    if dot_product > sigma * norm_g**2:                #   Strong +ve curv.
+        s_choice = jr.choice(key, a=jnp.array([s_CG, s_MR, s_GM]))
+        return -s_choice * g, "SPC"
+
+    elif 0.0 < dot_product < sigma * norm_g**2:        #   Weak +ve curv.
+        slpc = jr.uniform(key, shape=(), minval=s_lpc_min, maxval=1.0 / sigma)
         return -slpc * g, "LPC"
-    else:
-        snc =jr.uniform(key, s_lpc_min, s_lpc_max)
+
+    else:                                              #   Non-convex region
+        snc  = jr.uniform(key, shape=(), minval=s_lpc_min, maxval=s_lpc_max)
         return -snc * g, "NC"
+
+# def scaling_selection(g, loss_at_params, params, sigma, key, constant_learning_rate=True):
+#     Hg = jax.jvp(lambda p: jax.grad(loss_at_params)(p, key), (params,), (g,))[1]
+#     dot_product = jnp.dot(g, Hg)
+#     norm_g =jnp.linalg.norm(g)
+
+#     if constant_learning_rate:
+#         s_lpc_min = 1 / sigma #set to 1/sigma for constant learning rate
+#         s_lpc_max = 1 / sigma #set to 1/sigma for constant learning rate
+#     else:
+#         s_lpc_min = 1 / sigma *jr.random(key)
+
+#     s_CG =jnp.linalg.norm(g)**2 / dot_product
+#     s_MR = dot_product /jnp.linalg.norm(Hg)**2
+#     s_GM =jnp.sqrt(s_CG * s_MR)
+
+#     if dot_product > sigma * norm_g**2:
+#         spc =jr.choice(key, a=jnp.array([s_CG, s_MR, s_GM]))
+#         return -spc*g, "SPC"
+#     elif 0 < dot_product and dot_product < sigma * norm_g**2:
+#         slpc =jr.uniform(key, s_lpc_min, 1 / sigma)
+#         return -slpc * g, "LPC"
+#     else:
+#         snc =jr.uniform(key, s_lpc_min, s_lpc_max)
+#         return -snc * g, "NC"
 
 def backtracking_LS(loss_at_params, key, theta, rho, x, g, p):
 
@@ -43,7 +81,7 @@ def backtracking_LS(loss_at_params, key, theta, rho, x, g, p):
 def forward_backward_LS(loss_at_params, key, theta, rho, x, g, p):
     alpha = 1.0
     if loss_at_params(x + alpha * p, key) > loss_at_params(x, key) + alpha * rho *jnp.dot(g, p):
-        backtracking_LS(loss_at_params, theta, rho, x, g, p)
+        backtracking_LS(loss_at_params, key, theta, rho, x, g, p)
     else:
         while loss_at_params(x + alpha * p, key) >= loss_at_params(x, key) + alpha * rho *jnp.dot(g, p):
             alpha /= theta
