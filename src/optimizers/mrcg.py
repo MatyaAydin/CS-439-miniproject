@@ -5,11 +5,15 @@ import jax.random as jr
 from collections.abc import Callable
 
 def scaling_selection(g, loss_at_params, params,
-                      sigma, key, constant_learning_rate=True):
+                      sigma, key, constant_learning_rate=True, hv_fun=None):
     """Choose a scaled descent direction p = -s·g according to curvature."""
     # Hessian–vector product  H g
-    Hg = jax.jvp(lambda p: jax.grad(loss_at_params)(p, key),
+    # Hg = jax.jvp(lambda p: jax.grad(loss_at_params)(p, key),
+    #              (params,), (g,))[1]
+    Hg = hv_fun(params, g) if hv_fun is not None else \
+         jax.jvp(lambda p: jax.grad(loss_at_params)(p, key),
                  (params,), (g,))[1]
+
     dot_product = jnp.dot(g, Hg)
     norm_g      = jnp.linalg.norm(g)
 
