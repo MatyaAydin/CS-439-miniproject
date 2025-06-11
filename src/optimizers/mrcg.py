@@ -16,12 +16,14 @@ def scaling_selection(g, loss_at_params, params,
     # ------------------------------------------------------------
     # step-size bounds for low-positive-curvature (LPC) regime
     # ------------------------------------------------------------
-    if constant_learning_rate:
-        s_lpc_min = 1.0 / sigma
-        s_lpc_max = 1.0 / sigma
+    if sigma == 0.0:
+    # dummy positive numbers; never used when σ = 0
+        s_lpc_min = s_lpc_max = 1.0
     else:
-        s_lpc_min = (1.0 / sigma) * jr.uniform(key, shape=())
-
+        if constant_learning_rate:
+            s_lpc_min = s_lpc_max = 1.0 / sigma
+        else:
+            s_lpc_min = (1.0 / sigma) * jr.uniform(key, shape=())
     # three classical step candidates
     s_CG = norm_g**2 / dot_product
     s_MR = dot_product / jnp.linalg.norm(Hg)**2
