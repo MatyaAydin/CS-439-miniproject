@@ -9,7 +9,9 @@ def scaling_selection(g, loss_at_params, params,
     """Choose a scaled descent direction p = -s·g according to curvature."""
 
     if not use_H_hat:
-        Hg = hv_fun(params, g)
+        Hg = hv_fun(params, g) if hv_fun is not None else \
+            jax.jvp(lambda p: jax.grad(loss_at_params)(p, key),
+                    (params,), (g,))[1]
     else:
         Hg = hv_fun(g, H_hat)
 
