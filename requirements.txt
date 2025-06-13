@@ -3,3 +3,6 @@ numpy
 matplotlib
 seaborn
 jax
+torchvision
+tqdm
+scikit-learn
