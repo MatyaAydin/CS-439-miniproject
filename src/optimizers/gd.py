@@ -24,7 +24,7 @@ import jax.random as jr
 class SGDState:
     params: jnp.ndarray
     loss_at_params: Callable[[jnp.ndarray, jr.PRNGKey], jnp.ndarray]
-    step_size: float
+    step_size: float | Callable[[int], float]
     key: jr.PRNGKey
     iteration: int = 0
 
@@ -32,7 +32,11 @@ def sgd_step(state: SGDState) -> SGDState:
     key, subkey = jr.split(state.key)
     loss_fn = lambda p: state.loss_at_params(p, subkey)
     grad = jax.grad(loss_fn)(state.params)
-    new_params = state.params - state.step_size * grad
+
+
+    current_step_size = state.step_size if isinstance(state.step_size, float) else state.step_size(state.iteration)
+    new_params = state.params - current_step_size * grad
+
 
     return SGDState(
         params=new_params,

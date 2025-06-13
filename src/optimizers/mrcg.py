@@ -23,7 +23,7 @@ def scaling_selection(g, loss_at_params, params, sigma, key, constant_learning_r
         spc =jr.choice(key, a=jnp.array([s_CG, s_MR, s_GM]))
         return -spc*g, "SPC"
     elif 0 < dot_product and dot_product < sigma * norm_g**2:
-        slpc =jr.uniform(key, s_lpc_min, 1 / sigma)
+        slpc = jr.uniform(key, minval=s_lpc_min, maxval=1 / sigma)
         return -slpc * g, "LPC"
     else:
         snc =jr.uniform(key, s_lpc_min, s_lpc_max)
